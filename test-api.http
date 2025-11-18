@@ -1,0 +1,42 @@
+### Telegram Downloader API Test
+### File ini bisa digunakan dengan REST Client extension di VS Code
+### Atau bisa copy-paste ke Postman/Insomnia
+
+### 1. Health Check
+GET http://localhost:3000/health
+
+### 2. Info API
+GET http://localhost:3000/
+
+### 3. Download Media dari Channel Publik
+POST http://localhost:3000/api/download
+Content-Type: application/json
+
+{
+  "link": "https://t.me/channelName/123"
+}
+
+### 4. Download Media dari Channel Privat
+POST http://localhost:3000/api/download
+Content-Type: application/json
+
+{
+  "link": "https://t.me/c/channelId/messageId"
+}
+
+### 5. Test Error - Link tidak valid
+POST http://localhost:3000/api/download
+Content-Type: application/json
+
+{
+  "link": "https://invalid-link.com"
+}
+
+### 6. Test Error - Link kosong
+POST http://localhost:3000/api/download
+Content-Type: application/json
+
+{
+  "link": ""
+}
+
