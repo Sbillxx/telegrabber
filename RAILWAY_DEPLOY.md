@@ -39,10 +39,25 @@ Setelah login berhasil, copy `SESSION_STRING` yang muncul di console.
 
 ### 2. Setup Railway Project
 
-1. Login ke [Railway](https://railway.app)
-2. Klik "New Project"
-3. Pilih "Deploy from GitHub repo" (atau "Empty Project" jika mau deploy manual)
-4. Connect repository Anda
+**⚠️ Jika mendapat error "You must specify a workspaceId to create a project":**
+
+1. **Buat Workspace dulu:**
+
+   - Di Railway dashboard, klik dropdown di pojok kiri atas (biasanya ada nama atau "Personal")
+   - Klik "New Workspace" atau "Create Workspace"
+   - Beri nama workspace (misalnya: "My Projects")
+   - Klik "Create"
+
+2. **Setelah workspace dibuat:**
+   - Pastikan workspace yang baru dibuat sudah terpilih (cek dropdown di kiri atas)
+   - Klik "New Project"
+   - Pilih "Deploy from GitHub repo" (atau "Empty Project" jika mau deploy manual)
+   - Connect repository Anda
+
+**Alternatif (jika sudah ada workspace):**
+
+- Pastikan workspace sudah terpilih di dropdown kiri atas
+- Jika belum ada workspace, buat dulu seperti langkah di atas
 
 ### 3. Set Environment Variables
 
@@ -92,6 +107,21 @@ Jika ingin file downloads tersimpan permanen:
 **Catatan:** Tanpa volume, file downloads akan hilang saat restart.
 
 ## 🔧 Troubleshooting
+
+### Error: "You must specify a workspaceId to create a project"
+
+**Penyebab:** Belum ada workspace yang dipilih atau belum membuat workspace.
+
+**Solusi:**
+
+1. Klik dropdown di pojok kiri atas Railway dashboard
+2. Klik "New Workspace" atau "Create Workspace"
+3. Beri nama workspace (misalnya: "My Projects")
+4. Klik "Create"
+5. Pastikan workspace yang baru dibuat sudah terpilih
+6. Coba buat project lagi
+
+**Catatan:** Railway memerlukan workspace untuk mengorganisir project. Setiap user minimal harus punya 1 workspace.
 
 ### Error: "PHONE_NUMBER tidak diisi"
 
