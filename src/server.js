@@ -200,6 +200,17 @@ async function startServer() {
       }
     }
 
+    // Start Express server TERLEBIH DAHULU
+    // Ini penting agar Render.com bisa detect port yang terbuka
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`\n🚀 Server berjalan di http://0.0.0.0:${PORT}`);
+      console.log(`📥 Endpoint download: POST http://localhost:${PORT}/api/download`);
+      console.log(`\nContoh request:`);
+      console.log(`curl -X POST http://localhost:${PORT}/api/download \\`);
+      console.log(`  -H "Content-Type: application/json" \\`);
+      console.log(`  -d '{"link": "https://t.me/channelName/123"}'`);
+    });
+
     // Pastikan folder downloads ada
     const downloadsPath = getDownloadsPath();
     await fs.mkdir(downloadsPath, { recursive: true });
@@ -214,31 +225,32 @@ async function startServer() {
       finalSessionString = await loadSessionFromFile();
     }
 
-    await initTelegramClient(apiId, apiHash, finalSessionString);
-    console.log("✅ Telegram client (userbot) berhasil diinisialisasi");
+    try {
+      await initTelegramClient(apiId, apiHash, finalSessionString);
+      console.log("✅ Telegram client (userbot) berhasil diinisialisasi");
+    } catch (error) {
+      console.error("⚠️  Warning: Gagal menginisialisasi Telegram client:", error.message);
+      console.error("⚠️  Server tetap berjalan, tapi fitur download tidak akan berfungsi.");
+      console.error("⚠️  Pastikan API_ID, API_HASH, dan SESSION_STRING sudah benar.");
+    }
 
     // Initialize Telegram Bot
     const botToken = process.env.BOT_TOKEN;
     if (!botToken || botToken === "your_bot_token_here") {
       console.error("❌ ERROR: BOT_TOKEN harus diisi di file .env");
       console.error("Dapatkan dari @BotFather di Telegram");
-      process.exit(1);
+      console.error("⚠️  Server tetap berjalan, tapi bot tidak akan berfungsi.");
+    } else {
+      try {
+        console.log("Menginisialisasi Telegram Bot...");
+        initBot(botToken);
+        await startBot();
+        console.log("✅ Telegram Bot berhasil diinisialisasi");
+      } catch (error) {
+        console.error("⚠️  Warning: Gagal menginisialisasi Telegram Bot:", error.message);
+        console.error("⚠️  Server tetap berjalan, tapi bot tidak akan berfungsi.");
+      }
     }
-
-    console.log("Menginisialisasi Telegram Bot...");
-    initBot(botToken);
-    await startBot();
-    console.log("✅ Telegram Bot berhasil diinisialisasi");
-
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log(`\n🚀 Server berjalan di http://localhost:${PORT}`);
-      console.log(`📥 Endpoint download: POST http://localhost:${PORT}/api/download`);
-      console.log(`\nContoh request:`);
-      console.log(`curl -X POST http://localhost:${PORT}/api/download \\`);
-      console.log(`  -H "Content-Type: application/json" \\`);
-      console.log(`  -d '{"link": "https://t.me/channelName/123"}'`);
-    });
   } catch (error) {
     console.error("Gagal memulai server:", error);
     process.exit(1);
