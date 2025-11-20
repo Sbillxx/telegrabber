@@ -89,3 +89,31 @@ export function validateDownloadRequest(body) {
   return { valid: true };
 }
 
+/**
+ * Generate URL publik untuk file yang didownload melalui tunnel
+ * @param {string} filePath - Path absolut file yang didownload
+ * @returns {string|null} - URL publik atau null jika TUNNEL_URL tidak dikonfigurasi
+ */
+export function generatePublicUrl(filePath) {
+  const tunnelUrl = process.env.TUNNEL_URL;
+
+  // Jika TUNNEL_URL tidak dikonfigurasi, return null
+  if (!tunnelUrl || tunnelUrl.trim() === "") {
+    return null;
+  }
+
+  // Normalize tunnel URL (remove trailing slash)
+  const normalizedTunnelUrl = tunnelUrl.trim().replace(/\/$/, "");
+
+  // Get relative path dari file (dari root project)
+  const projectRoot = path.join(__dirname, "..");
+  const relativePath = path.relative(projectRoot, filePath);
+
+  // Normalize path untuk URL (replace backslash dengan forward slash untuk Windows)
+  const urlPath = relativePath.replace(/\\/g, "/");
+
+  // Generate full URL
+  const publicUrl = `${normalizedTunnelUrl}/${urlPath}`;
+
+  return publicUrl;
+}

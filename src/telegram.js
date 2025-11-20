@@ -136,17 +136,21 @@ export async function parseTelegramLink(link) {
     throw new Error("Link tidak valid");
   }
 
-  // Normalize link (remove https://, trailing slash, etc)
+  // Normalize link (remove https://, trailing slash, query parameters, etc)
   link = link
     .trim()
     .replace(/^https?:\/\//, "")
-    .replace(/\/$/, "");
+    .replace(/\/$/, "")
+    .split("?")[0]; // Remove query parameters seperti ?single, ?embed, dll
 
   console.log(`🔗 Parsing link: ${link}`);
 
-  // Format: t.me/channelName/123
-  // Format: t.me/c/channelId/messageId
-  // Format: t.me/c/channelId/1/messageId (dengan thread ID)
+  // Format yang didukung:
+  // - t.me/channelName/123
+  // - t.me/channelName/123?single
+  // - t.me/c/channelId/messageId
+  // - t.me/c/channelId/1/messageId (dengan thread ID)
+  // - t.me/c/channelId/1/messageId?single
   let match = null;
   let channelIdentifier = null;
   let messageId = null;
@@ -154,7 +158,7 @@ export async function parseTelegramLink(link) {
 
   // Cek format channel privat dulu
   // Pattern 1: t.me/c/channelId/1/messageId (dengan thread ID di tengah)
-  let privatePattern = /^t\.me\/c\/(\d+)\/(\d+)\/(\d+)$/;
+  let privatePattern = /^t\.me\/c\/(\d+)\/(\d+)\/(\d+)/;
   match = link.match(privatePattern);
 
   if (match && match.length >= 4) {
@@ -165,7 +169,7 @@ export async function parseTelegramLink(link) {
     console.log(`✅ Link channel privat terdeteksi (dengan thread ID) - Channel ID: ${channelIdentifier}, Thread ID: ${match[2]}, Message ID: ${messageId}`);
   } else {
     // Pattern 2: t.me/c/channelId/messageId (tanpa thread ID)
-    privatePattern = /^t\.me\/c\/(\d+)\/(\d+)$/;
+    privatePattern = /^t\.me\/c\/(\d+)\/(\d+)/;
     match = link.match(privatePattern);
 
     if (match && match.length >= 3) {
@@ -176,7 +180,8 @@ export async function parseTelegramLink(link) {
       console.log(`✅ Link channel privat terdeteksi - Channel ID: ${channelIdentifier}, Message ID: ${messageId}`);
     } else {
       // Cek format channel publik (t.me/channelName/messageId)
-      const publicPattern = /^t\.me\/([^\/]+)\/(\d+)$/;
+      // Support username atau ID numerik
+      const publicPattern = /^t\.me\/([^\/]+)\/(\d+)/;
       match = link.match(publicPattern);
 
       if (match && match.length >= 3) {
@@ -190,7 +195,16 @@ export async function parseTelegramLink(link) {
 
   if (!match || !messageId || !channelIdentifier) {
     console.error(`❌ Format link tidak valid: ${link}`);
-    throw new Error("Format link tidak valid. Gunakan format: t.me/channelName/123 atau t.me/c/channelId/123");
+    throw new Error(
+      "Format link tidak valid.\n\n" +
+        "Format yang didukung:\n" +
+        "• t.me/channelName/123\n" +
+        "• t.me/channelName/123?single\n" +
+        "• t.me/c/channelId/123\n" +
+        "• t.me/c/channelId/1/123 (dengan thread ID)\n\n" +
+        "Link yang diberikan: " +
+        link
+    );
   }
 
   // Validasi channelIdentifier tidak boleh "c"

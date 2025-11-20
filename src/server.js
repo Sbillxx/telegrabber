@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import { initTelegramClient, loadSessionFromFile, parseTelegramLink, getMessage, downloadMedia, generateFileName } from "./telegram.js";
-import { validateDownloadRequest, normalizeTelegramLink, formatErrorResponse, getDownloadsPath } from "./utils.js";
+import { validateDownloadRequest, normalizeTelegramLink, formatErrorResponse, getDownloadsPath, generatePublicUrl } from "./utils.js";
 import { initBot, startBot, stopBot } from "./bot.js";
 import path from "path";
 import fs from "fs/promises";
@@ -106,14 +106,24 @@ app.post("/api/download", async (req, res) => {
     // Get relative path untuk response
     const relativePath = path.relative(process.cwd(), downloadedPath);
 
+    // Generate public URL melalui tunnel
+    const publicUrl = generatePublicUrl(downloadedPath);
+
     // Success response
-    res.json({
+    const response = {
       success: true,
       file: relativePath,
       absolutePath: downloadedPath,
       messageId: message.id,
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    // Tambahkan publicUrl jika tunnel dikonfigurasi
+    if (publicUrl) {
+      response.publicUrl = publicUrl;
+    }
+
+    res.json(response);
   } catch (error) {
     console.error("Unexpected error:", error);
     res.status(500).json({

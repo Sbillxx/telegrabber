@@ -1,6 +1,6 @@
 import { Bot, Context, InputFile } from "grammy";
 import { initTelegramClient, parseTelegramLink, getMessage, downloadMedia, generateFileName, getMessageFileSize } from "./telegram.js";
-import { getDownloadsPath } from "./utils.js";
+import { getDownloadsPath, generatePublicUrl } from "./utils.js";
 import path from "path";
 import fs from "fs/promises";
 import { createReadStream } from "fs";
@@ -244,19 +244,23 @@ async function handleDownload(ctx, link) {
     const fileSizeBytes = stats.size;
     const maxFileSizeBytes = 50 * 1024 * 1024; // 50MB limit Telegram Bot API
 
+    // Generate public URL melalui tunnel
+    const publicUrl = generatePublicUrl(downloadedPath);
+
     // Cek apakah file terlalu besar untuk dikirim via bot
     if (fileSizeBytes > maxFileSizeBytes) {
       const fileSizeGB = (fileSizeBytes / (1024 * 1024 * 1024)).toFixed(2);
-      await ctx.api.editMessageText(
-        chatId,
-        processingMsg.message_id,
-        `✅ Download berhasil! (${fileSizeMB} MB / ${fileSizeGB} GB)\n\n` +
-          `⚠️ File terlalu besar untuk dikirim via bot!\n\n` +
-          `📋 Batas maksimal Telegram Bot API: 50 MB\n` +
-          `📁 File Anda: ${fileSizeMB} MB\n\n` +
-          `💾 File sudah tersimpan di:\n\`${downloadedPath}\`\n\n` +
-          `💡 Silakan ambil file secara manual dari folder downloads.`
-      );
+
+      let message = `✅ Download berhasil! (${fileSizeMB} MB / ${fileSizeGB} GB)\n\n` + `⚠️ File terlalu besar untuk dikirim via bot!\n\n` + `📋 Batas maksimal Telegram Bot API: 50 MB\n` + `📁 File Anda: ${fileSizeMB} MB\n\n`;
+
+      // Tambahkan public URL jika tunnel dikonfigurasi
+      if (publicUrl) {
+        message += `🔗 Download via tunnel:\n${publicUrl}\n\n`;
+      } else {
+        message += `💾 File sudah tersimpan di:\n\`${downloadedPath}\`\n\n` + `💡 Silakan ambil file secara manual dari folder downloads.`;
+      }
+
+      await ctx.api.editMessageText(chatId, processingMsg.message_id, message);
       return;
     }
 
@@ -269,8 +273,14 @@ async function handleDownload(ctx, link) {
       const fileStream = createReadStream(downloadedPath);
       const inputFile = new InputFile(fileStream, path.basename(downloadedPath));
 
+      // Buat caption dengan atau tanpa public URL
+      let caption = `📥 File berhasil didownload\n📁 ${path.basename(downloadedPath)}\n💾 ${fileSizeMB} MB`;
+      if (publicUrl) {
+        caption += `\n\n🔗 Download via tunnel:\n${publicUrl}`;
+      }
+
       await ctx.api.sendDocument(chatId, inputFile, {
-        caption: `📥 File berhasil didownload\n📁 ${path.basename(downloadedPath)}\n💾 ${fileSizeMB} MB`,
+        caption: caption,
       });
 
       // Delete processing message
@@ -293,16 +303,17 @@ async function handleDownload(ctx, link) {
 
       if (isFileTooLarge) {
         const fileSizeGB = (fileSizeBytes / (1024 * 1024 * 1024)).toFixed(2);
-        await ctx.api.editMessageText(
-          chatId,
-          processingMsg.message_id,
-          `✅ Download berhasil! (${fileSizeMB} MB / ${fileSizeGB} GB)\n\n` +
-            `⚠️ File terlalu besar untuk dikirim via bot!\n\n` +
-            `📋 Batas maksimal Telegram Bot API: 50 MB\n` +
-            `📁 File Anda: ${fileSizeMB} MB\n\n` +
-            `💾 File sudah tersimpan di:\n\`${downloadedPath}\`\n\n` +
-            `💡 Silakan ambil file secara manual dari folder downloads.`
-        );
+
+        let message = `✅ Download berhasil! (${fileSizeMB} MB / ${fileSizeGB} GB)\n\n` + `⚠️ File terlalu besar untuk dikirim via bot!\n\n` + `📋 Batas maksimal Telegram Bot API: 50 MB\n` + `📁 File Anda: ${fileSizeMB} MB\n\n`;
+
+        // Tambahkan public URL jika tunnel dikonfigurasi
+        if (publicUrl) {
+          message += `🔗 Download via tunnel:\n${publicUrl}\n\n`;
+        } else {
+          message += `💾 File sudah tersimpan di:\n\`${downloadedPath}\`\n\n` + `💡 Silakan ambil file secara manual dari folder downloads.`;
+        }
+
+        await ctx.api.editMessageText(chatId, processingMsg.message_id, message);
       } else {
         await ctx.api.editMessageText(
           chatId,

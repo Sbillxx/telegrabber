@@ -55,7 +55,22 @@ cp .env.example .env
 API_ID=your_api_id_here
 API_HASH=your_api_hash_here
 PORT=3000
+BOT_TOKEN=your_bot_token_here
+PHONE_NUMBER=+6281234567890
+PASSWORD=your_2fa_password_if_any
+TUNNEL_URL=https://your-tunnel-url.com
 ```
+
+**Environment Variables:**
+
+- `API_ID` - API ID dari my.telegram.org (wajib)
+- `API_HASH` - API Hash dari my.telegram.org (wajib)
+- `BOT_TOKEN` - Token bot dari @BotFather (wajib untuk bot Telegram)
+- `PHONE_NUMBER` - Nomor telepon untuk login pertama kali (wajib jika belum ada SESSION_STRING)
+- `PASSWORD` - Password 2FA jika ada (opsional)
+- `SESSION_STRING` - Session string setelah login (opsional, akan dibuat otomatis)
+- `PORT` - Port untuk Express server (default: 3000)
+- `TUNNEL_URL` - URL tunnel untuk akses publik ke folder downloads (opsional, contoh: https://abc123.ngrok.io)
 
 ### 4. Login Pertama Kali
 
@@ -110,10 +125,13 @@ Download media dari link Telegram.
   "success": true,
   "file": "downloads/media_123_1234567890.mp4",
   "absolutePath": "/full/path/to/downloads/media_123_1234567890.mp4",
+  "publicUrl": "https://your-tunnel-url.com/downloads/media_123_1234567890.mp4",
   "messageId": 123,
   "timestamp": "2024-01-01T00:00:00.000Z"
 }
 ```
+
+**Catatan:** Field `publicUrl` hanya akan muncul jika `TUNNEL_URL` dikonfigurasi di environment variables.
 
 **Response Error:**
 
@@ -198,12 +216,34 @@ response = requests.post(
 print(response.json())
 ```
 
+## 🌐 Tunnel URL (Public Access)
+
+Jika Anda menggunakan tunnel service (seperti ngrok, Cloudflare Tunnel, dll) untuk expose folder `downloads` sebagai file server publik, Anda bisa mengkonfigurasi `TUNNEL_URL` di environment variables.
+
+**Cara Setup:**
+
+1. Setup tunnel service Anda untuk expose folder `downloads` (misalnya dengan ngrok: `ngrok http 3000` atau expose folder langsung)
+2. Tambahkan `TUNNEL_URL` di `.env` dengan URL tunnel Anda
+3. Setelah download selesai, aplikasi akan otomatis generate URL publik untuk file tersebut
+
+**Contoh:**
+
+- Tunnel URL: `https://abc123.ngrok.io`
+- File: `downloads/media_123_1234567890.mp4`
+- Public URL: `https://abc123.ngrok.io/downloads/media_123_1234567890.mp4`
+
+URL publik ini akan muncul di:
+
+- Response API endpoint `/api/download` (field `publicUrl`)
+- Bot Telegram message (untuk file yang terlalu besar atau berhasil dikirim)
+
 ## 🔒 Keamanan
 
 - Jangan commit file `.env` ke repository
 - Jangan share `SESSION_STRING` dengan siapapun
 - Gunakan environment variables untuk production
 - Pertimbangkan menambahkan authentication untuk API endpoints
+- Jika menggunakan tunnel, pastikan tunnel service Anda aman dan terpercaya
 
 ## 📦 Dependencies
 
@@ -237,4 +277,3 @@ print(response.json())
 ## 📄 License
 
 ISC
-
