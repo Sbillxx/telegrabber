@@ -88,9 +88,17 @@ export async function initTelegramClient(apiId, apiHash, sessionString = "") {
         return password.trim();
       },
       phoneCode: async () => {
-        // Di production (Railway), tidak bisa input manual
-        if (process.env.RAILWAY_ENVIRONMENT || !process.stdin.isTTY) {
-          throw new Error("Login pertama kali tidak bisa dilakukan di production environment. Silakan login di local terlebih dahulu, lalu copy SESSION_STRING ke environment variables.");
+        // Di production (Render.com, Railway, dll), tidak bisa input manual
+        if (process.env.RAILWAY_ENVIRONMENT || process.env.RENDER || !process.stdin.isTTY) {
+          throw new Error(
+            "❌ Login pertama kali tidak bisa dilakukan di production environment (Render.com/Railway).\n\n" +
+              "💡 SOLUSI:\n" +
+              "1. Login di local machine terlebih dahulu\n" +
+              "2. Copy SESSION_STRING yang muncul di console\n" +
+              "3. Paste SESSION_STRING ke environment variables di Render.com/Railway\n" +
+              "4. Restart service\n\n" +
+              "SESSION_STRING tidak akan expire selama akun tidak diubah."
+          );
         }
         console.log("⏰ Kode OTP berlaku selama beberapa menit. Masukkan kode dengan cepat!");
         const code = await input("Masukkan kode OTP yang dikirim ke Telegram: ");
