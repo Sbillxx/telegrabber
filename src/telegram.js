@@ -10,6 +10,103 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let client = null;
+let keepAliveInterval = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+/**
+ * Setup connection handlers untuk auto-reconnect dan keep-alive
+ * @param {TelegramClient} clientInstance - Telegram client instance
+ */
+function setupConnectionHandlers(clientInstance) {
+  if (!clientInstance) return;
+
+  // Handle disconnect event
+  clientInstance.addEventHandler(
+    async (update) => {
+      // Handler untuk update events (untuk keep connection alive)
+    },
+    { raw: true }
+  );
+
+  // Keep-alive mechanism: ping setiap 3 menit untuk menjaga koneksi
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+  }
+
+  keepAliveInterval = setInterval(async () => {
+    try {
+      if (clientInstance && clientInstance.connected) {
+        // Ping ke Telegram untuk keep connection alive (menggunakan getMe yang ringan)
+        await clientInstance.getMe();
+        reconnectAttempts = 0; // Reset reconnect attempts jika berhasil
+        // Log hanya di development untuk mengurangi noise
+        if (process.env.NODE_ENV !== "production") {
+          console.log("✅ Keep-alive ping successful");
+        }
+      } else {
+        console.log("⚠️  Connection lost, attempting to reconnect...");
+        await reconnectClient(clientInstance);
+      }
+    } catch (error) {
+      // Hanya log error yang signifikan
+      if (!error.message.includes("AUTH_KEY_UNREGISTERED") && !error.message.includes("SESSION_REVOKED")) {
+        console.error("⚠️  Keep-alive ping failed:", error.message);
+      }
+      // Coba reconnect jika ping gagal dan client tidak connected
+      if (clientInstance && !clientInstance.connected) {
+        await reconnectClient(clientInstance);
+      }
+    }
+  }, 3 * 60 * 1000); // Ping setiap 3 menit (lebih sering untuk mencegah timeout)
+
+  // Handle error events
+  clientInstance.addEventHandler(
+    async (update) => {
+      if (update && update.error) {
+        console.error("⚠️  Telegram client error:", update.error);
+        if (!clientInstance.connected) {
+          await reconnectClient(clientInstance);
+        }
+      }
+    },
+    { raw: true }
+  );
+}
+
+/**
+ * Reconnect client jika disconnect
+ * @param {TelegramClient} clientInstance - Telegram client instance
+ */
+async function reconnectClient(clientInstance) {
+  if (!clientInstance) return;
+
+  if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    console.error(`❌ Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please restart the server.`);
+    return;
+  }
+
+  reconnectAttempts++;
+  console.log(`🔌 Attempting to reconnect... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+
+  try {
+    if (!clientInstance.connected) {
+      await clientInstance.connect();
+      console.log("✅ Reconnected successfully!");
+      reconnectAttempts = 0; // Reset on success
+    }
+  } catch (error) {
+    console.error(`⚠️  Reconnect attempt ${reconnectAttempts} failed:`, error.message);
+
+    // Wait before next attempt (exponential backoff)
+    const waitTime = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000); // Max 30 seconds
+    console.log(`⏳ Waiting ${waitTime / 1000} seconds before next reconnect attempt...`);
+
+    setTimeout(async () => {
+      await reconnectClient(clientInstance);
+    }, waitTime);
+  }
+}
 
 /**
  * Helper untuk input dari console
@@ -36,6 +133,9 @@ function input(prompt) {
  * @returns {Promise<TelegramClient>}
  */
 export async function initTelegramClient(apiId, apiHash, sessionString = "") {
+  // Reset reconnect attempts saat init baru
+  reconnectAttempts = 0;
+
   if (client && client.connected) {
     return client;
   }
@@ -52,7 +152,12 @@ export async function initTelegramClient(apiId, apiHash, sessionString = "") {
     connectionRetries: 10, // Increase retry untuk file besar
     timeout: 300000, // 5 minutes timeout (untuk file besar)
     retryDelay: 1000, // 1 second delay antar retry (lebih cepat)
+    autoReconnect: true, // Auto reconnect saat disconnect
+    useWSS: false, // Gunakan TCP untuk stabilitas lebih baik
   });
+
+  // Setup event listeners untuk handle disconnect
+  setupConnectionHandlers(client);
 
   await client.connect();
 
@@ -728,6 +833,21 @@ export function generateFileName(message, extension = null) {
  */
 export function getClient() {
   return client;
+}
+
+/**
+ * Cleanup resources (clear intervals, disconnect, etc)
+ */
+export function cleanup() {
+  if (keepAliveInterval) {
+    clearInterval(keepAliveInterval);
+    keepAliveInterval = null;
+  }
+  if (client) {
+    client.disconnect().catch(() => {
+      // Ignore disconnect errors
+    });
+  }
 }
 
 /**

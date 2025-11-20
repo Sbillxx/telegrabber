@@ -261,22 +261,16 @@ async function startServer() {
 process.on("SIGINT", async () => {
   console.log("\nMenghentikan server...");
   await stopBot();
-  const { getClient } = await import("./telegram.js");
-  const client = getClient();
-  if (client) {
-    await client.disconnect();
-  }
+  const { cleanup } = await import("./telegram.js");
+  cleanup();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
   console.log("\nMenghentikan server...");
   await stopBot();
-  const { getClient } = await import("./telegram.js");
-  const client = getClient();
-  if (client) {
-    await client.disconnect();
-  }
+  const { cleanup } = await import("./telegram.js");
+  cleanup();
   process.exit(0);
 });
 
