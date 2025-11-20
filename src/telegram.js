@@ -21,14 +21,6 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 function setupConnectionHandlers(clientInstance) {
   if (!clientInstance) return;
 
-  // Handle disconnect event
-  clientInstance.addEventHandler(
-    async (update) => {
-      // Handler untuk update events (untuk keep connection alive)
-    },
-    { raw: true }
-  );
-
   // Keep-alive mechanism: ping setiap 3 menit untuk menjaga koneksi
   if (keepAliveInterval) {
     clearInterval(keepAliveInterval);
@@ -59,19 +51,6 @@ function setupConnectionHandlers(clientInstance) {
       }
     }
   }, 3 * 60 * 1000); // Ping setiap 3 menit (lebih sering untuk mencegah timeout)
-
-  // Handle error events
-  clientInstance.addEventHandler(
-    async (update) => {
-      if (update && update.error) {
-        console.error("⚠️  Telegram client error:", update.error);
-        if (!clientInstance.connected) {
-          await reconnectClient(clientInstance);
-        }
-      }
-    },
-    { raw: true }
-  );
 }
 
 /**
